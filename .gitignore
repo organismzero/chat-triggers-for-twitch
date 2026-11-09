@@ -1,0 +1,9 @@
+.ideas/
+
+# Node.js
+node_modules/
+
+# Stream Deck
+*.sdPlugin/logs
+dist/
+*.streamDeckPlugin

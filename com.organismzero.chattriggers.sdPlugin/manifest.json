@@ -1,0 +1,62 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "Name": "Chat Triggers for Twitch",
+  "Version": "0.1.0.0",
+  "Author": "OrganismZero",
+  "Description": "Run your Stream Deck actions and multi-actions when someone types a command in your Twitch chat.",
+  "Category": "Chat Triggers for Twitch",
+  "CategoryIcon": "imgs/plugin/category-icon",
+  "Icon": "imgs/plugin/marketplace",
+  "CodePath": "bin/plugin.js",
+  "UUID": "com.organismzero.chattriggers",
+  "SDKVersion": 3,
+  "Software": {
+    "MinimumVersion": "7.4"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "12"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Nodejs": {
+    "Version": "24",
+    "Debug": "enabled"
+  },
+  "Actions": [
+    {
+      "Name": "Trigger",
+      "UUID": "com.organismzero.chattriggers.trigger",
+      "Icon": "imgs/actions/trigger/icon",
+      "Tooltip": "Runs an MCP Deck action when a chat command is used. Press to test, hold to enable or disable.",
+      "PropertyInspectorPath": "ui/trigger.html",
+      "Controllers": ["Keypad"],
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/trigger/key",
+          "TitleAlignment": "bottom"
+        }
+      ]
+    },
+    {
+      "Name": "Status",
+      "UUID": "com.organismzero.chattriggers.status",
+      "Icon": "imgs/actions/status/icon",
+      "Tooltip": "Shows the Twitch chat and MCP connection status. Press to reconnect.",
+      "PropertyInspectorPath": "ui/status.html",
+      "Controllers": ["Keypad"],
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/status/key",
+          "TitleAlignment": "bottom"
+        }
+      ]
+    }
+  ]
+}

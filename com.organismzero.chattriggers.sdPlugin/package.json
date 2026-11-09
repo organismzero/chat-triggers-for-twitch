@@ -1,0 +1,14 @@
+{
+  "name": "com.organismzero.chattriggers",
+  "private": true,
+  "type": "module",
+  "description": "Runtime dependencies for the packed plugin. Install with `npm install` from the repository root.",
+  "dependencies": {
+    "@elgato/mcp-server": "0.1.8",
+    "@elgato/streamdeck": "3.0.4",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@twurple/api": "8.2.0",
+    "@twurple/auth": "8.2.0",
+    "@twurple/eventsub-ws": "8.2.0"
+  }
+}

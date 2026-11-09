@@ -1,0 +1,24 @@
+{
+  "name": "chat-triggers-for-twitch",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stream Deck plugin that runs MCP Deck actions when commands are used in Twitch chat.",
+  "type": "module",
+  "license": "MIT",
+  "author": "OrganismZero",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install-plugin-deps.js",
+    "test": "node --test test/",
+    "dev": "streamdeck dev",
+    "link": "streamdeck link com.organismzero.chattriggers.sdPlugin",
+    "restart": "streamdeck restart com.organismzero.chattriggers",
+    "validate": "streamdeck validate com.organismzero.chattriggers.sdPlugin",
+    "pack": "node scripts/install-plugin-deps.js ci && streamdeck pack com.organismzero.chattriggers.sdPlugin --output dist --force"
+  },
+  "devDependencies": {
+    "@elgato/cli": "1.10.4"
+  }
+}
