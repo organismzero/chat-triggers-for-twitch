@@ -1,5 +1,6 @@
-// Per-trigger global and per-user cooldowns. Checking and recording are separate so a use only
-// starts a cooldown once the action has actually been sent.
+// Per-trigger global and per-user cooldowns. Checking and recording are separate so the caller can
+// run every other check in between; it should record straight after deciding to run (before any
+// await), so two messages arriving together can't both get through.
 
 export class Cooldowns {
   /** @type {Map<string, { lastUse: number, users: Map<string, number> }>} */

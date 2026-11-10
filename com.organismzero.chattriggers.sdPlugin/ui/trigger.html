@@ -3,7 +3,70 @@
   <head>
     <meta charset="utf-8" />
     <title>Trigger settings</title>
+    <!-- sdpi-components v4.0.1, vendored from https://sdpi-components.dev/releases/v4/sdpi-components.js -->
     <script src="sdpi-components.js"></script>
+    <link rel="stylesheet" href="pi.css" />
   </head>
-  <body></body>
+  <body>
+    <div id="notes" class="notes" hidden></div>
+
+    <sdpi-item label="Command">
+      <sdpi-textfield setting="command" placeholder="!lights" maxlength="50" required></sdpi-textfield>
+    </sdpi-item>
+
+    <sdpi-item label="Action">
+      <sdpi-select setting="targetId" datasource="getDeckActions" hot-reload loading="Loading MCP Deck actions…"></sdpi-select>
+    </sdpi-item>
+
+    <sdpi-item>
+      <sdpi-button id="refresh">Refresh actions</sdpi-button>
+    </sdpi-item>
+
+    <sdpi-item label="Who can use it">
+      <sdpi-checkbox-list setting="allowed" columns="2">
+        <option value="broadcaster">Broadcaster</option>
+        <option value="moderator">Moderators</option>
+        <option value="vip">VIPs</option>
+        <option value="subscriber">Subscribers</option>
+        <option value="everyone">Everyone</option>
+      </sdpi-checkbox-list>
+    </sdpi-item>
+
+    <sdpi-item label="Cooldown (s)">
+      <sdpi-textfield setting="globalCooldown" placeholder="10" maxlength="5"></sdpi-textfield>
+    </sdpi-item>
+
+    <sdpi-item label="Per user (s)">
+      <sdpi-textfield setting="userCooldown" placeholder="30" maxlength="5"></sdpi-textfield>
+    </sdpi-item>
+
+    <sdpi-item label="Enabled">
+      <sdpi-checkbox setting="enabled" default="true"></sdpi-checkbox>
+    </sdpi-item>
+
+    <p class="help">
+      The command is matched against the first word of each chat message, ignoring case.
+      Only actions on the <strong>MCP Deck</strong> can be chosen. Press the key to test the action;
+      hold it to turn the trigger on or off.
+    </p>
+
+    <script>
+      const { streamDeckClient } = SDPIComponents
+
+      document.getElementById('refresh').addEventListener('click', () => {
+        streamDeckClient.send('sendToPlugin', { event: 'refreshDeckActions' })
+      })
+
+      const notes = document.getElementById('notes')
+      streamDeckClient.sendToPropertyInspector.subscribe(({ payload }) => {
+        if (payload?.event !== 'triggerStatus') return
+        notes.replaceChildren(...payload.notes.map(text => {
+          const line = document.createElement('p')
+          line.textContent = text
+          return line
+        }))
+        notes.hidden = payload.notes.length === 0
+      })
+    </script>
+  </body>
 </html>

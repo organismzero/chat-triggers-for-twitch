@@ -1,0 +1,63 @@
+.notes {
+  margin: 8px 12px;
+  padding: 6px 10px;
+  border-left: 3px solid #ffb020;
+  background: rgba(255, 176, 32, 0.08);
+  color: #e6e6e6;
+  font-size: 9pt;
+}
+
+.notes p {
+  margin: 2px 0;
+}
+
+.help {
+  margin: 12px;
+  color: #9a9a9a;
+  font-size: 9pt;
+  line-height: 1.4;
+}
+
+.code {
+  font-family: Consolas, Menlo, monospace;
+  font-size: 16pt;
+  letter-spacing: 2px;
+  color: #ffffff;
+}
+
+.muted {
+  color: #9a9a9a;
+}
+
+.trigger-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.trigger-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 9pt;
+}
+
+.trigger-list .label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag {
+  padding: 0 5px;
+  border-radius: 3px;
+  background: #3a3a3a;
+  color: #cfcfcf;
+  font-size: 8pt;
+}
+
+.tag.problem {
+  background: #5a1d24;
+}

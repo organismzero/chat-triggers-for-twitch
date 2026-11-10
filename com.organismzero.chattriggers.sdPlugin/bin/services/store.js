@@ -17,8 +17,11 @@ export class GlobalStore {
     this.#write = write
   }
 
+  #loaded = false
+
   async load () {
     this.#cache = (await this.#read()) ?? {}
+    this.#loaded = true
     return this.#cache
   }
 
@@ -32,6 +35,8 @@ export class GlobalStore {
    * @param {Record<string, unknown>} patch
    */
   update (patch) {
+    // Writing before loading would replace everything saved, including the Twitch sign-in.
+    if (!this.#loaded) throw new Error('Global settings were updated before they were loaded')
     this.#cache = { ...this.#cache, ...patch }
     const snapshot = this.#cache
     this.#queue = this.#queue.then(() => this.#write(snapshot)).catch(() => {})

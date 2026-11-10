@@ -3,7 +3,147 @@
   <head>
     <meta charset="utf-8" />
     <title>Status settings</title>
+    <!-- sdpi-components v4.0.1, vendored from https://sdpi-components.dev/releases/v4/sdpi-components.js -->
     <script src="sdpi-components.js"></script>
+    <link rel="stylesheet" href="pi.css" />
   </head>
-  <body></body>
+  <body>
+    <sdpi-item label="Twitch">
+      <span id="twitch-state" class="muted">…</span>
+    </sdpi-item>
+    <sdpi-item id="code-row" label="Code" hidden>
+      <span id="code" class="code"></span>
+    </sdpi-item>
+    <sdpi-item>
+      <sdpi-button id="sign-in" hidden>Sign in with Twitch</sdpi-button>
+      <sdpi-button id="open-link" hidden>Open Twitch</sdpi-button>
+      <sdpi-button id="cancel" hidden>Cancel</sdpi-button>
+      <sdpi-button id="sign-out" hidden>Sign out</sdpi-button>
+    </sdpi-item>
+
+    <sdpi-item label="Chat">
+      <span id="chat-state" class="muted">…</span>
+    </sdpi-item>
+    <sdpi-item label="MCP">
+      <span id="mcp-state" class="muted">…</span>
+    </sdpi-item>
+    <sdpi-item>
+      <sdpi-button id="reconnect">Reconnect</sdpi-button>
+    </sdpi-item>
+
+    <sdpi-item label="Rate limit">
+      <input id="rateLimitCount" type="number" min="1" max="100" step="1" style="width: 4em" />
+      <span class="muted">&nbsp;actions per&nbsp;</span>
+      <input id="rateLimitWindow" type="number" min="1" max="3600" step="1" style="width: 4em" />
+      <span class="muted">&nbsp;s</span>
+    </sdpi-item>
+    <sdpi-item label="Hold to toggle">
+      <input id="longPressMs" type="number" min="300" max="3000" step="50" style="width: 5em" />
+      <span class="muted">&nbsp;ms</span>
+    </sdpi-item>
+
+    <sdpi-item label="Triggers">
+      <ul id="triggers" class="trigger-list"></ul>
+    </sdpi-item>
+
+    <p class="help">
+      Triggers keep working when their key is on another page or profile. If you delete a Trigger key,
+      it stays active until you forget it here. Hidden triggers can be forgotten; they come back if their
+      key is shown again.
+    </p>
+
+    <script>
+      const { streamDeckClient } = SDPIComponents
+      const send = (payload) => streamDeckClient.send('sendToPlugin', payload)
+      const $ = (id) => document.getElementById(id)
+
+      const TWITCH_TEXT = {
+        'not-configured': 'Not available in this build (no client ID)',
+        'signed-out': 'Not signed in',
+        pending: 'Enter the code on Twitch to finish signing in',
+        'signed-in': 'Signed in',
+        'needs-reconnect': 'Needs reconnecting'
+      }
+      const CHAT_TEXT = { stopped: 'Not connected', connecting: 'Connecting…', connected: 'Connected', error: 'Error' }
+      const MCP_TEXT = { stopped: 'Stopped', starting: 'Starting…', ready: 'Connected', 'no-app': 'Stream Deck isn\'t connected', down: 'Not running' }
+      const LOOK_TEXT = { ready: '', offline: '', disabled: 'off', broken: 'missing action', unset: 'not set up' }
+
+      for (const [id, event] of [['sign-in', 'signIn'], ['open-link', 'openVerification'], ['cancel', 'cancelSignIn'], ['sign-out', 'signOut'], ['reconnect', 'reconnect']]) {
+        $(id).addEventListener('click', () => send({ event }))
+      }
+
+      const optionIds = ['rateLimitCount', 'rateLimitWindow', 'longPressMs']
+      for (const id of optionIds) {
+        $(id).addEventListener('change', () => {
+          const options = Object.fromEntries(optionIds.map(key => [key, $(key).value]))
+          send({ event: 'setOptions', options })
+        })
+      }
+
+      function describe (text, detail) {
+        return detail ? `${text}: ${detail}` : text
+      }
+
+      function render (state) {
+        const { twitch, chat, mcp, options, triggers } = state
+        let twitchText = TWITCH_TEXT[twitch.state] ?? twitch.state
+        if (twitch.state === 'signed-in' && twitch.login) twitchText = `Signed in as ${twitch.login}`
+        if (twitch.state === 'needs-reconnect' && twitch.login) twitchText = `${twitch.login} needs reconnecting`
+        $('twitch-state').textContent = describe(twitchText, twitch.state === 'signed-in' ? '' : twitch.message)
+
+        $('code-row').hidden = twitch.state !== 'pending'
+        $('code').textContent = twitch.userCode || ''
+        $('sign-in').hidden = !['signed-out', 'needs-reconnect'].includes(twitch.state)
+        $('open-link').hidden = twitch.state !== 'pending'
+        $('cancel').hidden = twitch.state !== 'pending'
+        $('sign-out').hidden = !['signed-in', 'needs-reconnect'].includes(twitch.state)
+
+        $('chat-state').textContent = describe(CHAT_TEXT[chat.state] ?? chat.state, chat.state === 'connected' ? '' : chat.message)
+        const mcpText = mcp.state === 'ready' ? `Connected, ${mcp.actionCount} action(s) on the MCP Deck` : (MCP_TEXT[mcp.state] ?? mcp.state)
+        $('mcp-state').textContent = describe(mcpText, mcp.state === 'ready' ? '' : mcp.message)
+
+        for (const id of optionIds) {
+          if (document.activeElement !== $(id)) $(id).value = options[id]
+        }
+
+        const list = $('triggers')
+        list.replaceChildren()
+        if (triggers.length === 0) {
+          const empty = document.createElement('li')
+          empty.className = 'muted'
+          empty.textContent = 'None yet. Add a Trigger key to get started.'
+          list.append(empty)
+        }
+        for (const trigger of triggers) {
+          const item = document.createElement('li')
+          const label = document.createElement('span')
+          label.className = 'label'
+          label.textContent = `${trigger.command || '(no command)'} → ${trigger.target || '(no action)'}`
+          label.title = label.textContent
+          item.append(label)
+
+          const tags = [trigger.visible ? 'shown' : 'hidden', LOOK_TEXT[trigger.look]].filter(Boolean)
+          for (const text of tags) {
+            const tag = document.createElement('span')
+            tag.className = text === 'missing action' ? 'tag problem' : 'tag'
+            tag.textContent = text
+            item.append(tag)
+          }
+
+          if (!trigger.visible) {
+            const forget = document.createElement('button')
+            forget.textContent = 'Forget'
+            forget.addEventListener('click', () => send({ event: 'forgetTrigger', id: trigger.id }))
+            item.append(forget)
+          }
+          list.append(item)
+        }
+      }
+
+      streamDeckClient.sendToPropertyInspector.subscribe(({ payload }) => {
+        if (payload?.event === 'statusState') render(payload)
+      })
+      send({ event: 'getState' })
+    </script>
+  </body>
 </html>
