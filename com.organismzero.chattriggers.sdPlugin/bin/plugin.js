@@ -4,6 +4,7 @@ import { App } from './app.js'
 import { TWITCH_CLIENT_ID, TWITCH_SCOPES } from './config.js'
 import { StatusAction } from './actions/status.js'
 import { TriggerAction } from './actions/trigger.js'
+import { describeError } from './core/redact.js'
 
 // Quiet by default. The Status key's settings can switch on debug logging (see App#applyOptions).
 // Never use 'trace' in a release: it records every message to and from Stream Deck, including
@@ -22,8 +23,19 @@ const app = new App({
 streamDeck.actions.registerAction(new TriggerAction(app))
 streamDeck.actions.registerAction(new StatusAction(app))
 
+// A failed Stream Deck call in a key handler mustn't take the whole plugin down: Stream Deck
+// disables a plugin that keeps crashing. Errors are reduced to a status and message, never URLs.
+const crashLogger = streamDeck.logger.createScope('Plugin')
+process.on('unhandledRejection', (error) => {
+  crashLogger.error(`Unexpected error: ${describeError(error)}`)
+})
+
 await streamDeck.connect()
-await app.start()
+try {
+  await app.start()
+} catch (error) {
+  crashLogger.error(`Couldn't start: ${describeError(error)}`)
+}
 
 const shutdown = () => {
   app.chat.stop()

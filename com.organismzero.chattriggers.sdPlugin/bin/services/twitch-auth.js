@@ -15,13 +15,20 @@ import { describeError, twitchErrorMessage } from '../core/redact.js'
  */
 
 const INTENT = 'chat'
+const REFRESH_RETRY_MS = 30_000
+
+/** Whether Twitch itself turned the refresh token down, as opposed to a network problem. */
+function isRejected (error) {
+  return error?.statusCode === 400 || error?.statusCode === 401
+}
 
 /** Waits, unless the signal is aborted first. */
 function wait (ms, signal) {
   return new Promise((resolve, reject) => {
     if (signal.aborted) return reject(signal.reason)
-    const timer = setTimeout(resolve, ms)
-    signal.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason) }, { once: true })
+    const onAbort = () => { clearTimeout(timer); reject(signal.reason) }
+    const timer = setTimeout(() => { signal.removeEventListener('abort', onAbort); resolve() }, ms)
+    signal.addEventListener('abort', onAbort, { once: true })
   })
 }
 
@@ -47,6 +54,8 @@ export class TwitchAuth extends EventEmitter {
   #userId = ''
   /** @type {AbortController | null} */
   #signIn = null
+  /** @type {NodeJS.Timeout | undefined} */
+  #retryTimer
   #provider
   #clientId
   #scopes
@@ -74,7 +83,13 @@ export class TwitchAuth extends EventEmitter {
     })
     this.#provider.onRefreshFailure((userId, error) => {
       if (userId !== this.#userId) return
-      this.markNeedsReconnect(`Twitch didn't accept the saved sign-in (${describeError(error)})`)
+      if (isRejected(error)) {
+        this.markNeedsReconnect(`Twitch didn't accept the saved sign-in (${describeError(error)})`)
+        return
+      }
+      // Probably offline, e.g. Stream Deck started before the network. Keep the token and retry.
+      this.#logger.warn(`Couldn't refresh the Twitch sign-in (${describeError(error)}); trying again in ${REFRESH_RETRY_MS / 1000} s`)
+      this.#scheduleRetry()
     })
   }
 
@@ -146,6 +161,9 @@ export class TwitchAuth extends EventEmitter {
 
       const tokenInfo = await getTokenInfo(token.accessToken, this.#clientId)
       if (!tokenInfo.userId) throw new Error('Twitch didn\'t say which account signed in')
+      // Cancelled or signed out while Twitch was answering: don't save the sign-in after all.
+      if (signal.aborted) throw signal.reason
+      clearTimeout(this.#retryTimer)
 
       if (this.#userId && this.#userId !== tokenInfo.userId && this.#provider.hasUser(this.#userId)) {
         this.#provider.removeUser(this.#userId)
@@ -176,6 +194,7 @@ export class TwitchAuth extends EventEmitter {
   /** Signs out, revoking the token on Twitch where possible. */
   async signOut () {
     this.cancelSignIn()
+    clearTimeout(this.#retryTimer)
     const token = this.#saved()?.token
     if (this.#userId && this.#provider.hasUser(this.#userId)) this.#provider.removeUser(this.#userId)
     this.#userId = ''
@@ -196,9 +215,23 @@ export class TwitchAuth extends EventEmitter {
   markNeedsReconnect (reason) {
     if (this.#status.state === 'needs-reconnect') return
     this.#logger.warn(`Twitch needs reconnecting: ${reason}`)
+    clearTimeout(this.#retryTimer)
     if (this.#userId && this.#provider.hasUser(this.#userId)) this.#provider.removeUser(this.#userId)
     this.#save({ token: null, reason })
     this.#setStatus({ state: 'needs-reconnect', login: this.#status.login, message: reason })
+  }
+
+  /** Re-adds the saved token after a failed refresh, which clears Twurple's cached failure. */
+  #scheduleRetry () {
+    clearTimeout(this.#retryTimer)
+    this.#retryTimer = setTimeout(() => {
+      const token = this.#saved()?.token
+      if (this.#status.state !== 'signed-in' || !token?.refreshToken) return
+      if (this.#provider.hasUser(this.#userId)) this.#provider.removeUser(this.#userId)
+      this.#provider.addUser(this.#userId, token, [INTENT])
+      this.emit('retry')
+    }, REFRESH_RETRY_MS)
+    this.#retryTimer.unref?.()
   }
 
   #restingStatus () {

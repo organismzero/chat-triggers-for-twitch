@@ -10,6 +10,7 @@ import { Cooldowns } from './core/cooldowns.js'
 import { evaluate } from './core/evaluate.js'
 import { actionLabel } from './core/mcp-actions.js'
 import { RateLimiter } from './core/rate-limit.js'
+import { describeError } from './core/redact.js'
 import { normaliseOptions, normaliseTriggerSettings } from './core/settings.js'
 import { McpService } from './services/mcp.js'
 import { GlobalStore } from './services/store.js'
@@ -17,6 +18,10 @@ import { TwitchAuth } from './services/twitch-auth.js'
 import { TwitchChat } from './services/twitch-chat.js'
 
 const RATE_LIMIT_LOG_INTERVAL_MS = 10_000
+
+// The shape of the saved global settings. Bump it when that shape changes, and migrate older
+// settings in #migrate, so updates don't break existing installs.
+export const SETTINGS_VERSION = 1
 
 /**
  * @typedef {object} TriggerEntry
@@ -52,7 +57,8 @@ export class App extends EventEmitter {
     this.#logger = streamDeck.logger.createScope('Triggers')
     this.store = new GlobalStore({
       read: () => streamDeck.settings.getGlobalSettings(),
-      write: (settings) => streamDeck.settings.setGlobalSettings(settings)
+      write: (settings) => streamDeck.settings.setGlobalSettings(settings),
+      onError: (error) => this.#logger.warn(`Couldn't save settings: ${describeError(error)}`)
     })
     this.auth = new TwitchAuth({ clientId, scopes, store: this.store, logger: streamDeck.logger.createScope('Twitch') })
     this.chat = new TwitchChat({ auth: this.auth, logger: streamDeck.logger.createScope('Chat') })
@@ -61,14 +67,26 @@ export class App extends EventEmitter {
 
   async start () {
     await this.store.load()
+    this.#migrate()
     this.#applyOptions(this.store.get().options)
     this.#loadTriggers()
 
+    let watching = ''
     this.auth.on('status', (status) => {
-      if (status.state === 'signed-in' && this.chat.status.state === 'stopped') this.chat.start()
-      if (status.state !== 'signed-in' && status.state !== 'pending') this.chat.stop()
+      if (status.state === 'signed-in') {
+        // Restart for a different account too, so the new account's channel is the one watched.
+        if (this.chat.status.state === 'stopped' || watching !== this.auth.userId) {
+          watching = this.auth.userId
+          this.chat.start()
+        }
+      } else if (status.state !== 'pending') {
+        watching = ''
+        this.chat.stop()
+      }
       this.emit('change')
     })
+    // After a refresh failed for want of a network, the token is re-added; connect chat again.
+    this.auth.on('retry', () => { if (this.auth.userId) this.chat.start() })
     this.chat.on('status', () => this.emit('change'))
     this.chat.on('message', (message) => this.handleMessage(message))
     this.mcp.on('status', () => this.emit('change'))
@@ -119,7 +137,9 @@ export class App extends EventEmitter {
 
   /** Stops a trigger working, e.g. because its key was deleted. @param {string} id */
   forgetTrigger (id) {
-    if (!this.triggers.delete(id)) return
+    // A key that's on show isn't deleted; forgetting it would stop it working with no sign why.
+    if (this.triggers.get(id)?.visible !== false) return
+    this.triggers.delete(id)
     this.cooldowns.forget(id)
     this.#saveTriggers()
     this.#logger.info('Forgot a trigger')
@@ -228,6 +248,18 @@ export class App extends EventEmitter {
   }
 
   // Persistence ----------------------------------------------------------------------------------
+
+  #migrate () {
+    const { settingsVersion } = this.store.get()
+    if (settingsVersion === SETTINGS_VERSION) return
+    if (typeof settingsVersion === 'number' && settingsVersion > SETTINGS_VERSION) {
+      // Saved by a newer version of the plugin. Read what we understand, but don't stamp it older.
+      this.#logger.warn(`Settings were saved by a newer version of Chat Triggers (format ${settingsVersion})`)
+      return
+    }
+    // Version 0 (0.1 builds, no marker) has the same shape as version 1.
+    this.store.update({ settingsVersion: SETTINGS_VERSION })
+  }
 
   #loadTriggers () {
     const saved = this.store.get().triggers

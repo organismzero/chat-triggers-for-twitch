@@ -88,8 +88,14 @@ export class TwitchChat extends EventEmitter {
     })
     listener.onRevoke((_subscription, status) => {
       if (!current()) return
-      this.#auth.markNeedsReconnect(`Twitch revoked access to chat (${status}); sign in again`)
-      this.stop()
+      if (status === 'authorization_revoked' || status === 'user_removed') {
+        this.#auth.markNeedsReconnect(`Twitch revoked access to chat (${status}); sign in again`)
+        this.stop()
+        return
+      }
+      // Something else, such as Twitch retiring the subscription version. The sign-in is still good.
+      this.#logger.warn(`Twitch ended the chat subscription (${status})`)
+      this.#setStatus('error', `Twitch ended the chat subscription (${status}); press the Status key to reconnect`)
     })
 
     listener.onChannelChatMessage(userId, userId, (event) => {

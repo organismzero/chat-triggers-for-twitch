@@ -17,7 +17,8 @@
     "restart": "streamdeck restart com.organismzero.chattriggers",
     "validate": "streamdeck validate com.organismzero.chattriggers.sdPlugin",
     "pack": "node scripts/install-plugin-deps.js ci && streamdeck pack com.organismzero.chattriggers.sdPlugin --output dist --force",
-    "images": "node scripts/render-images.js"
+    "images": "node scripts/render-images.js",
+    "marketplace": "node scripts/render-marketplace.js"
   },
   "devDependencies": {
     "@elgato/cli": "1.10.4",

@@ -8,13 +8,15 @@ export class GlobalStore {
   #queue = Promise.resolve()
   #read
   #write
+  #onError
 
   /**
-   * @param {{ read: () => Promise<Record<string, unknown>>, write: (settings: Record<string, unknown>) => Promise<void> }} io
+   * @param {{ read: () => Promise<Record<string, unknown>>, write: (settings: Record<string, unknown>) => Promise<void>, onError?: (error: unknown) => void }} io
    */
-  constructor ({ read, write }) {
+  constructor ({ read, write, onError = () => {} }) {
     this.#read = read
     this.#write = write
+    this.#onError = onError
   }
 
   #loaded = false
@@ -39,7 +41,7 @@ export class GlobalStore {
     if (!this.#loaded) throw new Error('Global settings were updated before they were loaded')
     this.#cache = { ...this.#cache, ...patch }
     const snapshot = this.#cache
-    this.#queue = this.#queue.then(() => this.#write(snapshot)).catch(() => {})
+    this.#queue = this.#queue.then(() => this.#write(snapshot)).catch(error => this.#onError(error))
     return this.#queue
   }
 }

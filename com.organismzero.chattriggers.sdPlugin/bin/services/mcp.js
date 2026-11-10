@@ -45,6 +45,10 @@ export class McpService extends EventEmitter {
   #restartTimer = null
   #pollTimer = null
   #stopping = false
+  /** @type {Promise<void> | null} The start in progress, shared by overlapping callers. */
+  #starting = null
+  /** Bumped by every start and stop, so a start that was overtaken can tell. */
+  #generation = 0
   #logger
   #bridgePath
   #pollMs
@@ -69,9 +73,19 @@ export class McpService extends EventEmitter {
 
   get actions () { return this.#actions }
 
-  /** Starts the MCP server and connects to it. Safe to call when already running. */
-  async start () {
-    if (this.#client) return
+  /** Starts the MCP server and connects to it. Safe to call when already running or starting. */
+  start () {
+    if (this.#client) return Promise.resolve()
+    if (this.#starting) return this.#starting
+    const starting = this.#start().finally(() => {
+      if (this.#starting === starting) this.#starting = null
+    })
+    this.#starting = starting
+    return starting
+  }
+
+  async #start () {
+    const generation = ++this.#generation
     this.#stopping = false
     clearTimeout(this.#restartTimer)
     this.#setStatus('starting', 'Starting the Elgato MCP Server…')
@@ -94,11 +108,17 @@ export class McpService extends EventEmitter {
     try {
       await client.connect(transport)
     } catch (error) {
+      if (generation !== this.#generation) return
       this.#logger.error(`Couldn't start the Elgato MCP Server: ${error.message}`)
       this.#handleClosed('Couldn\'t start the Elgato MCP Server')
       return
     }
 
+    // Stopped or restarted while connecting: this server is no longer wanted.
+    if (generation !== this.#generation) {
+      await client.close().catch(() => {})
+      return
+    }
     this.#client = client
     this.#logger.info('Connected to the Elgato MCP Server')
     await this.refresh().catch(() => {})
@@ -111,6 +131,8 @@ export class McpService extends EventEmitter {
   /** Stops the MCP server and any scheduled restart. */
   async stop () {
     this.#stopping = true
+    this.#generation++
+    this.#starting = null
     clearTimeout(this.#restartTimer)
     clearInterval(this.#pollTimer)
     const client = this.#client
