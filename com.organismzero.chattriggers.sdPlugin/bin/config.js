@@ -4,7 +4,7 @@
  * Client ID of the "Chat Triggers" application in the Twitch developer console, registered as a
  * public client. A client ID isn't a secret; public clients have no client secret at all.
  */
-export const TWITCH_CLIENT_ID = ''
+export const TWITCH_CLIENT_ID = '27apze4qgb26y1sryrgib55tgy6w72'
 
 /** `user:read:chat` is the only scope needed: the plugin reads chat and never sends anything. */
 export const TWITCH_SCOPES = Object.freeze(['user:read:chat'])
