@@ -10,5 +10,6 @@
     "@twurple/api": "8.2.0",
     "@twurple/auth": "8.2.0",
     "@twurple/eventsub-ws": "8.2.0"
-  }
+  },
+  "version": "1.0.0"
 }

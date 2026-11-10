@@ -35,7 +35,7 @@ Only the chosen action's ID is sent to Stream Deck. Nothing from a chat message 
    - **Enabled:** turns the trigger on or off.
 3. Press the Trigger key to test the action. Hold it to turn the trigger on or off.
 
-The key flashes green when its action runs. It shows **Off** when disabled, **Missing action** if its action has gone from the MCP Deck, **Offline** while chat or MCP isn't connected, and **Set up** until it has a command and an action.
+The key lights up yellow when its action runs. It shows **Off** when disabled, **Missing action** if its action has gone from the MCP Deck, **Offline** while chat or MCP isn't connected, and **Set up** until it has a command and an action.
 
 ### Hidden and deleted keys
 
@@ -58,6 +58,19 @@ Pressing the key reconnects chat and restarts the MCP server. Its settings also 
 - **Rate limit:** the most actions that can run across all triggers in a time window (default: 5 per 10 seconds). It's a safety net on top of each trigger's cooldowns.
 - **Hold to toggle:** how long to hold a Trigger key to turn it on or off (default: 600 ms).
 - **Debug logging:** writes more detail to the logs, such as why a command was ignored and who used it. Off by default; turn it on only while tracking down a problem.
+
+## Known limitations
+
+- **Windows only.** macOS isn't supported yet because it hasn't been tested there.
+- **One channel:** the chat of the account you sign in with.
+- **Keys only.** Trigger and Status work on keys, not dials or touch strips, and can't be used inside multi-actions.
+- **Deleted Trigger keys keep working** until you forget them in the Status key's settings, because Stream Deck can't tell a deleted key from one on another page.
+- **Multi-actions aren't waited for.** Stream Deck starts them and returns at once, so a trigger counts as run as soon as its multi-action starts.
+- **Chat Triggers relies on Elgato's MCP integration**, which is new. It uses the bundled Elgato MCP Server (version 0.1.8), and a future Stream Deck update could change how MCP actions are listed or run.
+
+## Privacy
+
+Chat Triggers stores your Twitch sign-in and settings in Stream Deck on your computer, reads your chat without saving it, and sends nothing to its developer. See [PRIVACY.md](PRIVACY.md).
 
 ## Security
 
@@ -88,6 +101,8 @@ npm run dev        # turn on Stream Deck developer mode (once)
 npm run link       # link the .sdPlugin folder into Stream Deck (once)
 npm run restart    # restart the plugin after changing code
 npm run validate   # check the manifest and files
+npm run images     # redraw the icons from bin/core/brand.js
+npm run marketplace  # redraw the Marketplace thumbnail and gallery images
 ```
 
 The plugin is plain JavaScript (ES modules) with no build step. The code in `com.organismzero.chattriggers.sdPlugin/bin/` is what Stream Deck runs:
@@ -98,7 +113,7 @@ The plugin is plain JavaScript (ES modules) with no build step. The code in `com
 | `bin/app.js` | Connects chat, triggers and MCP |
 | `bin/actions/` | The Trigger and Status keys |
 | `bin/services/` | MCP client, Twitch sign-in and chat, global settings |
-| `bin/core/` | Pure logic: command matching, permissions, cooldowns, rate limiting, redaction, key images |
+| `bin/core/` | Pure logic: command matching, permissions, cooldowns, rate limiting, redaction, key images, and the brand colours and mark |
 | `ui/` | Property inspectors, using a vendored copy of [sdpi-components](https://sdpi-components.dev) v4.0.1 |
 
 Logs are written to `com.organismzero.chattriggers.sdPlugin/logs/`. To check the MCP connection outside Stream Deck, with the Stream Deck app running:
@@ -115,6 +130,17 @@ npm run pack
 ```
 
 This reinstalls the runtime dependencies from the lockfile, validates the plugin and writes `dist/com.organismzero.chattriggers.streamDeckPlugin`. The `.sdignore` file keeps logs, lockfiles and the MCP server's unused ngrok binaries out of the package.
+
+## Releasing
+
+1. Update `CHANGELOG.md` and the `Version` in `manifest.json` (four parts, such as `1.0.0.0`).
+2. `npm test`, then `npm run pack`.
+3. Install `dist/com.organismzero.chattriggers.streamDeckPlugin` on a clean Stream Deck and check sign-in, a test press and a chat command.
+4. Tag the commit (`v1.0.0`) and upload the package and the text in `marketplace/listing.md` to the Elgato Maker Console.
+
+Global settings carry a `settingsVersion` (see `SETTINGS_VERSION` in `bin/app.js`). If a release changes their shape, bump it and migrate older settings in `App#migrate`.
+
+The Marketplace fonts in `marketplace/fonts/` are Chakra Petch and IBM Plex, under the SIL Open Font Licence.
 
 ## Licence
 

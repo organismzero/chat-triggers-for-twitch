@@ -1,7 +1,7 @@
 {
   "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
   "Name": "Chat Triggers for Twitch",
-  "Version": "0.1.0.0",
+  "Version": "1.0.0.0",
   "Author": "OrganismZero",
   "Description": "Run your Stream Deck actions and multi-actions when someone types a command in your Twitch chat.",
   "Category": "Chat Triggers for Twitch",
