@@ -28,7 +28,7 @@ Only the chosen action's ID is sent to Stream Deck. Nothing from a chat message 
 
 1. Add a **Status** key and press it, or open its settings and choose **Sign in with Twitch**. Twitch opens in your browser with a code; approve it there. Sign in with the account whose chat you want to watch.
 2. Add a **Trigger** key and fill in its settings:
-   - **Command:** for example `!lights`. It matches the first word of a message, ignoring case, so `!Lights please` works but `!lightsout` doesn't.
+   - **Command:** for example `!lights` or just `lights`; both respond to `!lights` in chat. It matches the first word of a message, ignoring case, so `!Lights please` works but `!lightsout` and `lights` (without the `!`) don't.
    - **Action:** an action from the MCP Deck. Use **Refresh actions** after changing the MCP Deck.
    - **Who can use it:** the broadcaster, moderators, VIPs, subscribers (including founders) or everyone. Roles aren't ranked: tick each one you want.
    - **Cooldown:** seconds before anyone can use the trigger again. **Per user** is how long each person waits before using it again.

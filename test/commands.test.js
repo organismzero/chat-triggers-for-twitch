@@ -21,10 +21,21 @@ describe('normaliseCommand', () => {
   it('rejects over-long commands', () => {
     assert.equal(normaliseCommand('!' + 'a'.repeat(MAX_COMMAND_LENGTH)), '')
     assert.equal(normaliseCommand('!' + 'a'.repeat(MAX_COMMAND_LENGTH - 1)).length, MAX_COMMAND_LENGTH)
+    assert.equal(normaliseCommand('a'.repeat(MAX_COMMAND_LENGTH - 1)).length, MAX_COMMAND_LENGTH)
   })
 
-  it('does not require a ! prefix', () => {
-    assert.equal(normaliseCommand('lights'), 'lights')
+  it('adds the ! prefix when it is left off', () => {
+    assert.equal(normaliseCommand('lights'), '!lights')
+    assert.equal(normaliseCommand('Lights on'), '!lights')
+  })
+
+  it('collapses repeated ! prefixes', () => {
+    assert.equal(normaliseCommand('!!lights'), '!lights')
+  })
+
+  it('treats a lone ! as no command', () => {
+    assert.equal(normaliseCommand('!'), '')
+    assert.equal(normaliseCommand('!!!'), '')
   })
 })
 
@@ -49,6 +60,16 @@ describe('matchesCommand', () => {
   it('matches the first word case-insensitively', () => {
     assert.ok(matchesCommand('!Lights', '!lights'))
     assert.ok(matchesCommand('!lights on please', '!LIGHTS'))
+  })
+
+  it('matches !command in chat when the setting has no !', () => {
+    assert.ok(matchesCommand('!lights', 'lights'))
+    assert.ok(matchesCommand('!LIGHTS now', 'Lights'))
+  })
+
+  it('does not match a chat message without the !', () => {
+    assert.equal(matchesCommand('lights', 'lights'), false)
+    assert.equal(matchesCommand('lights', '!lights'), false)
   })
 
   it('does not match a longer word that starts with the command', () => {

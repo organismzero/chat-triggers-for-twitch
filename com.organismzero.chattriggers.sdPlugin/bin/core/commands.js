@@ -7,7 +7,8 @@ export const MAX_COMMAND_LENGTH = 50
 const INVISIBLE = /[​-‍⁠﻿\u{E0000}-\u{E007F}]/gu
 
 /**
- * Tidies a configured command for storage and comparison: trimmed, first word only, lower case.
+ * Tidies a configured command for storage and comparison: trimmed, first word only, lower case,
+ * and always starting with a single `!`, so `lights` and `!lights` both mean `!lights`.
  * Returns an empty string when there's nothing usable.
  * @param {unknown} value
  * @returns {string}
@@ -15,8 +16,9 @@ const INVISIBLE = /[​-‍⁠﻿\u{E0000}-\u{E007F}]/gu
 export function normaliseCommand (value) {
   if (typeof value !== 'string') return ''
   const word = value.replace(INVISIBLE, '').trim().split(/\s+/)[0] ?? ''
-  if (word.length > MAX_COMMAND_LENGTH) return ''
-  return word.toLowerCase()
+  const name = word.replace(/^!+/, '')
+  if (name === '' || name.length + 1 > MAX_COMMAND_LENGTH) return ''
+  return `!${name.toLowerCase()}`
 }
 
 /**
@@ -31,8 +33,8 @@ export function firstWord (text) {
 }
 
 /**
- * Whether a chat message invokes the command, i.e. the command is the message's first word.
- * Case-insensitive. `!lights on` matches `!lights`; `!lightsout` doesn't.
+ * Whether a chat message invokes the command, i.e. `!command` is the message's first word.
+ * Case-insensitive. `!lights on` matches `!lights` (or `lights`); `!lightsout` and `lights` don't.
  * @param {unknown} text The chat message.
  * @param {unknown} command The configured command.
  * @returns {boolean}
