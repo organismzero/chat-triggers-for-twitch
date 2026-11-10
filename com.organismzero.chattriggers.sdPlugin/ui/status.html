@@ -41,6 +41,10 @@
       <input id="longPressMs" type="number" min="300" max="3000" step="50" style="width: 5em" />
       <span class="muted">&nbsp;ms</span>
     </sdpi-item>
+    <sdpi-item label="Debug logging">
+      <input id="debugLogging" type="checkbox" />
+      <label for="debugLogging" class="muted">&nbsp;More detail in the logs, including who used each command</label>
+    </sdpi-item>
 
     <sdpi-item label="Triggers">
       <ul id="triggers" class="trigger-list"></ul>
@@ -73,12 +77,12 @@
       }
 
       const optionIds = ['rateLimitCount', 'rateLimitWindow', 'longPressMs']
-      for (const id of optionIds) {
-        $(id).addEventListener('change', () => {
-          const options = Object.fromEntries(optionIds.map(key => [key, $(key).value]))
-          send({ event: 'setOptions', options })
-        })
+      const sendOptions = () => {
+        const options = Object.fromEntries(optionIds.map(key => [key, $(key).value]))
+        options.debugLogging = $('debugLogging').checked
+        send({ event: 'setOptions', options })
       }
+      for (const id of [...optionIds, 'debugLogging']) $(id).addEventListener('change', sendOptions)
 
       function describe (text, detail) {
         return detail ? `${text}: ${detail}` : text
@@ -105,6 +109,7 @@
         for (const id of optionIds) {
           if (document.activeElement !== $(id)) $(id).value = options[id]
         }
+        $('debugLogging').checked = options.debugLogging
 
         const list = $('triggers')
         list.replaceChildren()

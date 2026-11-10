@@ -68,14 +68,21 @@ describe('normaliseTriggerSettings', () => {
 
 describe('normaliseOptions', () => {
   it('uses the defaults', () => {
-    assert.deepEqual(normaliseOptions(undefined), { rateLimitCount: 5, rateLimitWindow: 10, longPressMs: 600 })
+    assert.deepEqual(normaliseOptions(undefined), { rateLimitCount: 5, rateLimitWindow: 10, longPressMs: 600, debugLogging: false })
+  })
+
+  it('only turns debug logging on for an explicit true', () => {
+    assert.equal(normaliseOptions({ debugLogging: true }).debugLogging, true)
+    assert.equal(normaliseOptions({ debugLogging: 'true' }).debugLogging, false)
+    assert.equal(normaliseOptions({ debugLogging: 1 }).debugLogging, false)
   })
 
   it('clamps and rounds', () => {
     assert.deepEqual(normaliseOptions({ rateLimitCount: '0', rateLimitWindow: '99999', longPressMs: '450.6' }), {
       rateLimitCount: 1,
       rateLimitWindow: 3600,
-      longPressMs: 451
+      longPressMs: 451,
+      debugLogging: false
     })
   })
 })

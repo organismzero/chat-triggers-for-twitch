@@ -5,8 +5,9 @@ import { TWITCH_CLIENT_ID, TWITCH_SCOPES } from './config.js'
 import { StatusAction } from './actions/status.js'
 import { TriggerAction } from './actions/trigger.js'
 
-// Quiet by default; raise to 'debug' while developing. Never use 'trace' in a release: it records
-// every message to and from Stream Deck, including global settings, which hold the Twitch tokens.
+// Quiet by default. The Status key's settings can switch on debug logging (see App#applyOptions).
+// Never use 'trace' in a release: it records every message to and from Stream Deck, including
+// global settings, which hold the Twitch tokens.
 streamDeck.logger.setLevel('info')
 
 const manifest = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url), 'utf8'))

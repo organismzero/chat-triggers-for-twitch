@@ -63,6 +63,7 @@ export function normaliseTriggerSettings (raw) {
  * @property {number} rateLimitCount Most actions run across all triggers in one window.
  * @property {number} rateLimitWindow Window length in seconds.
  * @property {number} longPressMs How long a key must be held to toggle a trigger.
+ * @property {boolean} debugLogging Log at debug level, including who used each command. Off unless explicitly turned on.
  */
 
 /**
@@ -74,6 +75,7 @@ export function normaliseOptions (raw) {
   return {
     rateLimitCount: Math.round(boundedNumber(options.rateLimitCount, OPTION_LIMITS.rateLimitCount)),
     rateLimitWindow: boundedNumber(options.rateLimitWindow, OPTION_LIMITS.rateLimitWindow),
-    longPressMs: Math.round(boundedNumber(options.longPressMs, OPTION_LIMITS.longPressMs))
+    longPressMs: Math.round(boundedNumber(options.longPressMs, OPTION_LIMITS.longPressMs)),
+    debugLogging: options.debugLogging === true
   }
 }

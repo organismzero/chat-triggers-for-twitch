@@ -18,7 +18,7 @@ Only the chosen action's ID is sent to Stream Deck. Nothing from a chat message 
 
 ## Requirements
 
-- **Stream Deck 7.4 or later**, on Windows 10+ or macOS 12+.
+- **Stream Deck 7.4 or later on Windows 10 or later.** macOS isn't supported yet: it hasn't been tested there.
 - **Node.js 24 or later**, for development only. The installed plugin runs on the Node.js built into Stream Deck.
 - **The Elgato MCP Server.** It's bundled with the plugin (`@elgato/mcp-server`, pinned), so you don't need to install it separately.
 - **MCP Actions turned on.** In Stream Deck, open **Preferences → General** and tick **Enable MCP Actions**. Some versions call it *Enable MCP Deck*.
@@ -57,13 +57,14 @@ Pressing the key reconnects chat and restarts the MCP server. Its settings also 
 
 - **Rate limit:** the most actions that can run across all triggers in a time window (default: 5 per 10 seconds). It's a safety net on top of each trigger's cooldowns.
 - **Hold to toggle:** how long to hold a Trigger key to turn it on or off (default: 600 ms).
+- **Debug logging:** writes more detail to the logs, such as why a command was ignored and who used it. Off by default; turn it on only while tracking down a problem.
 
 ## Security
 
 - Chat messages are untrusted. A message can only choose *whether* a trigger runs, never *what* runs: the action is fixed in the key's settings.
 - Checks run in this order, before anything happens: correct channel (messages from other channels during shared chat are ignored), command, enabled, action available, permission, cooldowns, then the global rate limit.
 - Twitch tokens are kept in the plugin's global settings, as Elgato recommends for sensitive values, rather than in key settings, which are included in exported profiles. They're never written to the logs, and errors from Twitch's sign-in endpoints are reduced to a status code and message before logging, because their URLs contain credentials.
-- Logging is quiet by default (`info`). Don't raise it to `trace` in a release build: that records every message between Stream Deck and the plugin, including global settings.
+- Logging is quiet by default (`info`). The **Debug logging** option raises it to `debug`, which adds chatters' usernames but never tokens. The plugin never uses `trace`, which would record every message between Stream Deck and the plugin, including global settings.
 
 ## Twitch app registration
 

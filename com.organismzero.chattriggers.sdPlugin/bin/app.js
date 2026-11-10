@@ -33,6 +33,7 @@ export class App extends EventEmitter {
   options = normaliseOptions(undefined)
   #lastRateLimitLog = 0
   #logger
+  #streamDeck
   #markReady
   /** Resolves once saved settings are loaded; key events wait for it. */
   ready = new Promise(resolve => { this.#markReady = resolve })
@@ -47,6 +48,7 @@ export class App extends EventEmitter {
   constructor ({ streamDeck, clientId, scopes, version }) {
     super()
     this.setMaxListeners(50)
+    this.#streamDeck = streamDeck
     this.#logger = streamDeck.logger.createScope('Triggers')
     this.store = new GlobalStore({
       read: () => streamDeck.settings.getGlobalSettings(),
@@ -217,8 +219,12 @@ export class App extends EventEmitter {
   }
 
   #applyOptions (raw) {
+    const wasDebug = this.options.debugLogging
     this.options = normaliseOptions(raw)
     this.rateLimiter.configure({ maxEvents: this.options.rateLimitCount, windowSeconds: this.options.rateLimitWindow })
+    // Never 'trace': that records every message to and from Stream Deck, including the tokens.
+    this.#streamDeck.logger.setLevel(this.options.debugLogging ? 'debug' : 'info')
+    if (this.options.debugLogging !== wasDebug) this.#logger.info(`Debug logging ${this.options.debugLogging ? 'on' : 'off'}`)
   }
 
   // Persistence ----------------------------------------------------------------------------------
