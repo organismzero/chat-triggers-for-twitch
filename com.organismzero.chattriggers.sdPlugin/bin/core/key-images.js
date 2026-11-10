@@ -1,5 +1,7 @@
 // Key images, drawn as SVG and passed to Stream Deck as data URLs. Pure functions.
 
+import { COLOURS as C, markSvg } from './brand.js'
+
 const SIZE = 144
 
 /** Escapes text for use inside SVG. @param {string} text */
@@ -23,25 +25,23 @@ function svg (body) {
   return `data:image/svg+xml;charset=utf8,${encodeURIComponent(markup)}`
 }
 
-function label (text, y, { x = 72, size = 22, colour = '#ffffff', weight = 600 } = {}) {
+// Key text uses the system UI font: Stream Deck renders these SVGs without web fonts.
+function label (text, y, { x = 72, size = 22, colour = C.paper, weight = 600 } = {}) {
   return `<text x="${x}" y="${y}" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="${size}" font-weight="${weight}" fill="${colour}">${escapeXml(text)}</text>`
 }
-
-const BUBBLE = 'M30 18h84v52H66l-20 18V70H30z'
-const BOLT = 'M78 26L64 46h14L68 62'
 
 /**
  * @typedef {'unset' | 'ready' | 'offline' | 'disabled' | 'broken' | 'fired' | 'failed'} TriggerLook
  */
 
 const TRIGGER_LOOKS = {
-  ready: { background: '#1f1530', accent: '#a970ff', text: '#ffffff', note: '' },
-  offline: { background: '#1f1530', accent: '#6b5a85', text: '#c9c2d6', note: 'Offline' },
-  disabled: { background: '#1c1c1c', accent: '#5a5a5a', text: '#8a8a8a', note: 'Off' },
-  broken: { background: '#3a1216', accent: '#ff5c6c', text: '#ffffff', note: 'Missing action' },
-  unset: { background: '#1c1c1c', accent: '#5a5a5a', text: '#bdbdbd', note: 'Set up' },
-  fired: { background: '#0f3d24', accent: '#3ddc84', text: '#ffffff', note: '' },
-  failed: { background: '#3a1216', accent: '#ff5c6c', text: '#ffffff', note: 'Failed' }
+  ready: { ground: C.ground, mark: C.spark, text: C.paper, noteColour: C.muted, note: '' },
+  offline: { ground: C.ground, mark: C.sparkDim, text: C.muted, noteColour: C.muted, note: 'Offline' },
+  disabled: { ground: C.ground, mark: C.muted, text: C.muted, noteColour: C.muted, note: 'Off' },
+  broken: { ground: C.faultGround, mark: C.fault, text: C.paper, noteColour: C.fault, note: 'Missing action' },
+  unset: { ground: C.ground, mark: C.muted, text: C.paper, noteColour: C.paper, note: 'Set up' },
+  fired: { ground: C.spark, mark: C.onSpark, text: C.onSpark, noteColour: C.onSpark, note: '' },
+  failed: { ground: C.faultGround, mark: C.fault, text: C.paper, noteColour: C.fault, note: 'Failed' }
 }
 
 /**
@@ -50,15 +50,20 @@ const TRIGGER_LOOKS = {
  */
 export function triggerImage ({ command, look }) {
   const style = TRIGGER_LOOKS[look] ?? TRIGGER_LOOKS.ready
-  const dashed = look === 'unset' ? ' stroke-dasharray="8 6"' : ''
+  const lines = (command ? 1 : 0) + (style.note ? 1 : 0)
+  // The mark shrinks to make room for the command and note beneath it.
+  const mark = [{ y: 72, scale: 0.8 }, { y: 50, scale: 0.62 }, { y: 42, scale: 0.55 }][lines]
   const parts = [
-    `<rect width="${SIZE}" height="${SIZE}" fill="${style.background}"/>`,
-    `<path d="${BUBBLE}" fill="none" stroke="${style.accent}" stroke-width="6" stroke-linejoin="round"${dashed}/>`,
-    `<path d="${BOLT}" fill="none" stroke="${style.text}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>`
+    `<rect width="${SIZE}" height="${SIZE}" fill="${style.ground}"/>`,
+    markSvg({ x: 72, ...mark, bubble: style.mark, bolt: style.mark, stroke: 11, dashed: look === 'unset' })
   ]
-  if (look === 'disabled') parts.push(`<path d="M24 100L120 22" stroke="${style.accent}" stroke-width="6" stroke-linecap="round"/>`)
-  if (command) parts.push(label(fit(command, 11), 112, { colour: style.text, size: 22 }))
-  if (style.note) parts.push(label(style.note, command ? 134 : 116, { colour: style.accent, size: 16, weight: 500 }))
+  if (look === 'disabled') parts.push(`<path d="M34 ${mark.y + 34}L110 ${mark.y - 34}" stroke="${C.muted}" stroke-width="7" stroke-linecap="round"/>`)
+  let y = mark.y + 56
+  if (command) {
+    parts.push(label(fit(command, 11), y, { colour: style.text, size: 22 }))
+    y += 24
+  }
+  if (style.note) parts.push(label(style.note, y, { colour: style.noteColour, size: 16, weight: 500 }))
   return svg(parts.join(''))
 }
 
@@ -66,7 +71,14 @@ export function triggerImage ({ command, look }) {
  * @typedef {'ok' | 'partial' | 'problem' | 'idle'} StatusLook
  */
 
-const STATUS_COLOURS = { ok: '#3ddc84', partial: '#ffb020', problem: '#ff5c6c', idle: '#8a8a8a' }
+const STATUS_COLOURS = { ok: C.go, partial: C.wait, problem: C.fault, idle: C.muted }
+
+// A filled dot when connected, a hollow ring when not: told apart by shape as well as colour.
+function indicator (ok, cx) {
+  return ok
+    ? `<circle cx="${cx}" cy="58" r="10" fill="${C.go}"/>`
+    : `<circle cx="${cx}" cy="58" r="8" fill="none" stroke="${C.fault}" stroke-width="4"/>`
+}
 
 /**
  * @param {{ look: StatusLook, chatOk: boolean, mcpOk: boolean, channel: string, note: string }} options
@@ -74,14 +86,13 @@ const STATUS_COLOURS = { ok: '#3ddc84', partial: '#ffb020', problem: '#ff5c6c', 
  */
 export function statusImage ({ look, chatOk, mcpOk, channel, note }) {
   const colour = STATUS_COLOURS[look] ?? STATUS_COLOURS.idle
-  const dot = (ok, cx) => `<circle cx="${cx}" cy="58" r="9" fill="${ok ? STATUS_COLOURS.ok : STATUS_COLOURS.problem}"/>`
   const parts = [
-    `<rect width="${SIZE}" height="${SIZE}" fill="#1c1c1c"/>`,
-    `<rect x="6" y="6" width="132" height="132" rx="14" fill="none" stroke="${colour}" stroke-width="6"/>`,
-    label('Chat', 36, { x: 42, size: 18, colour: '#d0d0d0', weight: 500 }),
-    label('MCP', 36, { x: 102, size: 18, colour: '#d0d0d0', weight: 500 }),
-    dot(chatOk, 42),
-    dot(mcpOk, 102)
+    `<rect width="${SIZE}" height="${SIZE}" fill="${C.ground}"/>`,
+    `<rect x="5" y="5" width="134" height="134" rx="18" fill="none" stroke="${colour}" stroke-width="6"/>`,
+    label('Chat', 36, { x: 44, size: 18, colour: C.muted, weight: 500 }),
+    label('MCP', 36, { x: 100, size: 18, colour: C.muted, weight: 500 }),
+    indicator(chatOk, 44),
+    indicator(mcpOk, 100)
   ]
   if (channel) parts.push(label(fit(channel, 12), 98, { size: 18 }))
   if (note) parts.push(label(fit(note, 14), 122, { size: 15, colour, weight: 500 }))
