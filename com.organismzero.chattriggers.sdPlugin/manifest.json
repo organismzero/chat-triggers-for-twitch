@@ -34,7 +34,9 @@
       "Icon": "imgs/actions/trigger/icon",
       "Tooltip": "Runs an MCP Deck action when a chat command is used. Press to test, hold to enable or disable.",
       "PropertyInspectorPath": "ui/trigger.html",
-      "Controllers": ["Keypad"],
+      "Controllers": [
+        "Keypad"
+      ],
       "SupportedInMultiActions": false,
       "States": [
         {
@@ -49,7 +51,9 @@
       "Icon": "imgs/actions/status/icon",
       "Tooltip": "Shows the Twitch chat and MCP connection status. Press to reconnect.",
       "PropertyInspectorPath": "ui/status.html",
-      "Controllers": ["Keypad"],
+      "Controllers": [
+        "Keypad"
+      ],
       "SupportedInMultiActions": false,
       "States": [
         {

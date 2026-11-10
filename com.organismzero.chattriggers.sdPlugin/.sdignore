@@ -1,3 +1,5 @@
 # Only loaded by the MCP server's --ngrok option, which this plugin never uses
 node_modules/@ngrok
 package-lock.json
+logs
+node_modules/.package-lock.json
