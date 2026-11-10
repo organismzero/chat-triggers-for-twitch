@@ -102,7 +102,8 @@ export class App extends EventEmitter {
     settings.targetLabel = this.#labelFor(settings.targetId) ?? (previous?.settings.targetId === settings.targetId ? previous.settings.targetLabel : '')
     this.triggers.set(id, { id, settings, visible })
     if (previous?.settings.targetId !== settings.targetId) this.cooldowns.forget(id)
-    this.#saveTriggers()
+    // Keys reappear on every page switch; only write global settings when something changed.
+    if (JSON.stringify(previous?.settings) !== JSON.stringify(settings)) this.#saveTriggers()
     this.emit('change')
   }
 
