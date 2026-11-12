@@ -5,7 +5,7 @@
 // sizes and spacing apply directly. Fonts are in marketplace/fonts (SIL Open Font Licence); key
 // text uses Segoe UI from the system, as it does on a real Stream Deck.
 
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Resvg } from '@resvg/resvg-js'
@@ -40,26 +40,61 @@ function text (lines, { x, y, size, lineHeight = size * 1.25, family = SANS, wei
 let clipCount = 0
 /** A key image drawn at (x, y), clipped to a rounded key. */
 function key (dataUrl, x, y, size = 72) {
-  const inner = decodeURIComponent(dataUrl.slice(dataUrl.indexOf(',') + 1)).replace(/^<svg[^>]*>|<\/svg>$/g, '')
+  const inner = keyInner(dataUrl)
   const id = `k${clipCount++}`
   const r = round(size * 0.16)
   return `<clipPath id="${id}"><rect x="${x}" y="${y}" width="${size}" height="${size}" rx="${r}"/></clipPath>` +
     `<g clip-path="url(#${id})"><svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="0 0 144 144">${inner}</svg></g>`
 }
 
-function blankKey (x, y, size = 72) {
-  return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="${round(size * 0.16)}" fill="${KEY_BLANK}"/>`
+/** The markup inside a key image's <svg> element. */
+function keyInner (dataUrl) {
+  return decodeURIComponent(dataUrl.slice(dataUrl.indexOf(',') + 1)).replace(/^<svg[^>]*>|<\/svg>$/g, '')
 }
 
-/** A Stream Deck: a 5 × 3 grid of keys on a raised body. `cells` holds data URLs, or null for blank keys. */
-function deck (cells, x, y) {
-  const parts = [`<rect x="${x}" y="${y}" width="472" height="296" rx="28" fill="${C.raised}"/>`]
-  cells.forEach((cell, i) => {
-    const kx = x + 24 + (i % 5) * 88
-    const ky = y + 24 + Math.floor(i / 5) * 88
-    parts.push(cell ? key(cell, kx, ky) : blankKey(kx, ky))
+// Elgato's own product shot of a Stream Deck MK.2, from its press kit (see marketplace/source/README.md).
+// The device is shown as it is; only the pictures on its key screens are replaced with ours.
+const DEVICE = { file: join(out, 'source', 'stream-deck-mk2.png'), width: 1200, height: 763 }
+
+// Where the key screens are in that image. The photo is taken from slightly above, so the bottom
+// row is a little wider and taller than the top row: positions are measured at the middle of the
+// top and bottom rows and interpolated between them.
+const SCREEN_ROWS = [[138, 238.7], [287, 390.7], [436, 542.7]]
+const SCREEN_TOP = { y: 188, left: 163.3, pitch: 184, size: 131.5 }
+const SCREEN_BOTTOM = { y: 489, left: 144.7, pitch: 191.5, size: 138 }
+
+function screenAt (y) {
+  const t = (y - SCREEN_TOP.y) / (SCREEN_BOTTOM.y - SCREEN_TOP.y)
+  const mix = (name) => SCREEN_TOP[name] + (SCREEN_BOTTOM[name] - SCREEN_TOP[name]) * t
+  return { left: mix('left'), pitch: mix('pitch'), size: mix('size') }
+}
+
+/**
+ * The Stream Deck MK.2, `width` wide at (x, y), with our key images on its keys. `cells` holds 15
+ * data URLs, left to right and top to bottom, or null for an unassigned (black) key.
+ */
+async function deck (cells, x, y, width) {
+  const image = (await readFile(DEVICE.file)).toString('base64')
+  const scale = width / DEVICE.width
+  const keys = cells.map((cell, i) => {
+    const [top, bottom] = SCREEN_ROWS[Math.floor(i / 5)]
+    const column = i % 5
+    const upper = screenAt(top)
+    const lower = screenAt(bottom)
+    const middle = screenAt((top + bottom) / 2)
+    const left = upper.left + column * upper.pitch
+    const leftBelow = lower.left + column * lower.pitch
+    // Maps a 144 × 144 key image onto the screen, sloping its sides with the photo's perspective.
+    const matrix = [middle.size / 144, 0, (leftBelow - left) / 144, (bottom - top) / 144, left, top].map(n => Math.round(n * 10000) / 10000).join(' ')
+    return `<g transform="matrix(${matrix})">` +
+      `<rect x="-5" y="-5" width="154" height="154" rx="24" fill="${KEY_BLANK}"/>` +
+      (cell ? `<g clip-path="url(#screen)"><svg width="144" height="144" viewBox="0 0 144 144">${keyInner(cell)}</svg></g>` : '') +
+      '<rect width="144" height="144" rx="20" fill="url(#gloss)"/></g>'
   })
-  return parts.join('')
+  return '<defs><clipPath id="screen"><rect width="144" height="144" rx="20"/></clipPath>' +
+    '<linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.12"/><stop offset="0.45" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>' +
+    `<g transform="translate(${x} ${y}) scale(${scale})">` +
+    `<image href="data:image/png;base64,${image}" width="${DEVICE.width}" height="${DEVICE.height}"/>${keys.join('')}</g>`
 }
 
 function panel (x, y, width, height) {
@@ -79,17 +114,17 @@ const round = (n) => Math.round(n * 100) / 100
 
 // Images ---------------------------------------------------------------------------------------
 
-function thumbnail () {
+async function thumbnail () {
   return page([
     text(['Chat', 'Triggers'], { x: 56, y: 96, size: 76, lineHeight: 72, family: DISPLAY, weight: 700, spacing: -1 }),
     text('for Twitch', { x: 58, y: 262, size: 28, family: DISPLAY, weight: 600, fill: C.spark }),
     lead(['Chat commands that press', 'your Stream Deck keys.'], 316),
     text('Stream Deck 7.4 or later · Windows', { x: 56, y: 404, size: 13, fill: C.muted, weight: 500, spacing: 0.2 }),
-    deck([
+    await deck([
       trig('!lights'), trig('!confetti', 'fired'), trig('!hydrate'), statusImage({ look: 'ok', chatOk: true, mcpOk: true, channel: 'your channel', note: 'Ready' }), null,
       trig('!scene'), trig('!hype'), trig('!lurk', 'disabled'), null, trig('!clip'),
       null, trig('!bonk'), null, null, null
-    ], 448, 92)
+    ], 424, 80, 520)
   ].join(''))
 }
 
@@ -182,16 +217,16 @@ function states () {
 
 function safety () {
   const points = [
-    ['Chat chooses when, never what.', 'Each key runs the one action you picked. Nothing from a chat message is passed on.'],
-    ['Checks come first.', 'Permissions, cooldowns and the rate limit are checked before anything runs.'],
-    ['Read-only access.', 'It signs in only to read your chat, and never posts in it.'],
-    ['Your keys stay yours.', 'Only actions you put on the MCP Deck can be triggered.']
+    ['Chat chooses when, never what.', 'Nothing from a message is passed on.'],
+    ['Checks come first.', 'Permissions, cooldowns and a rate limit.'],
+    ['Read-only access.', 'It reads your chat and never posts.'],
+    ['Your keys stay yours.', 'Only actions on your MCP Deck can run.']
   ]
   return page([
     headline(['Safe to leave', 'running live.']),
-    lead(['Your viewers get to press buttons.', 'They don’t get control of your', 'Stream Deck.'], 208),
+    lead(['Viewers press your keys.', 'They don’t control your Stream Deck.'], 208),
     ...points.map(([title, detail], i) => {
-      const y = 96 + i * 76
+      const y = 112 + i * 68
       return `<rect x="448" y="${y + 3}" width="14" height="14" rx="3" fill="${C.spark}"/>` +
         text(title, { x: 478, y, size: 18, family: DISPLAY, weight: 600 }) +
         text(wrap(detail, 52), { x: 478, y: y + 26, size: 14, lineHeight: 20, fill: C.muted })
@@ -212,7 +247,7 @@ function wrap (sentence, width) {
 // Render ---------------------------------------------------------------------------------------
 
 const images = {
-  'thumbnail.png': thumbnail(),
+  'thumbnail.png': await thumbnail(),
   'gallery-1-chat.png': chatCommand(),
   'gallery-2-settings.png': settings(),
   'gallery-3-states.png': states(),

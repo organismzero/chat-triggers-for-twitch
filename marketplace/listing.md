@@ -36,11 +36,20 @@ First release. Trigger keys run MCP Deck actions and multi-actions from chat com
 | File | Use |
 | --- | --- |
 | `app-icon.png` | App icon, 288 × 288 |
-| `thumbnail.png` | Thumbnail, 1920 × 960 |
+| `thumbnail.png` | Thumbnail, 1920 × 960. Uses Elgato's official Stream Deck MK.2 render (see `source/README.md`) |
 | `gallery-1-chat.png` | Gallery: a chat command running a key |
 | `gallery-2-settings.png` | Gallery: Trigger settings |
 | `gallery-3-states.png` | Gallery: key states |
 | `gallery-4-safety.png` | Gallery: safety |
+
+## Review history
+
+**1.0.0, first review: rejected (November 2026).** Elgato asked for two things:
+
+1. Product media should use official resources for Elgato hardware. The thumbnail was the only image with a device in it, drawn by hand. It now uses Elgato's own Stream Deck MK.2 render from the Media Room. The safety gallery image also has less text.
+2. A short demo video, emailed to maker@elgato.com before approval. See `demo-video.md`.
+
+To resubmit: Maker Console, Products, Chat Triggers for Twitch, Versions. Select the rejected version and submit the freshly packed `.streamDeckPlugin` as a revision, then replace the thumbnail and gallery images.
 
 ## Links
 
