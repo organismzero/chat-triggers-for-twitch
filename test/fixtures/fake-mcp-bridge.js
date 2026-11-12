@@ -1,5 +1,6 @@
 // A stand-in for the Elgato MCP Server, for tests. It lists one MCP Deck action, and appends its
-// process ID to a file so tests can check how many servers are left running.
+// process ID to a file so tests can check how many servers are left running. From the third
+// listing on, the action is renamed without any change notification, as Stream Deck does.
 
 import { appendFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -13,6 +14,7 @@ const PID_FILE = join(tmpdir(), 'chat-triggers-fake-mcp-pids.txt')
 appendFileSync(PID_FILE, `${process.pid}\n`)
 
 const actions = [{ id: 'lights', title: 'Lights', pluginId: 'com.elgato.streamdeck.multiactions', description: { name: 'Multi Action' } }]
+let listings = 0
 const tools = ['streamdeck__get_executable_actions', 'streamdeck__execute_action']
   .map(name => ({ name, inputSchema: { type: 'object' } }))
 
@@ -20,6 +22,8 @@ const server = new Server({ name: 'fake-elgato', version: '0.0.0' }, { capabilit
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }))
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === 'streamdeck__get_executable_actions') {
+    listings++
+    if (listings >= 3) actions[0].title = 'Lights on'
     return { content: [{ type: 'text', text: JSON.stringify({ actions }) }] }
   }
   const found = actions.some(action => action.id === request.params.arguments?.id)

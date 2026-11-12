@@ -88,6 +88,8 @@ export class TriggerAction extends SingletonAction {
   async onPropertyInspectorDidAppear () {
     await this.#app.ready
     this.#updatePropertyInspector()
+    // Fetch a fresh list too; a change shows up through the app's 'change' event.
+    this.#app.mcp.refresh().catch(() => {})
   }
 
   async onSendToPlugin (ev) {

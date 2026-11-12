@@ -40,6 +40,18 @@ describe('McpService', () => {
     await mcp.stop()
   })
 
+  it('picks up a renamed action that Stream Deck does not announce', async () => {
+    const mcp = new McpService({ logger: quiet, bridgePath, pollMs: 100 })
+    const seen = []
+    mcp.on('actions', (actions) => seen.push(actions[0]?.title))
+    await mcp.start()
+    assert.equal(mcp.actions[0].title, 'Lights')
+    await until(() => mcp.actions[0]?.title === 'Lights on', 3000)
+    assert.equal(mcp.actions[0].title, 'Lights on')
+    assert.deepEqual(seen, ['Lights', 'Lights on'])
+    await mcp.stop()
+  })
+
   it('leaves exactly one server running when started and restarted while connecting', async () => {
     rmSync(PID_FILE, { force: true })
     const mcp = new McpService({ logger: quiet, bridgePath })

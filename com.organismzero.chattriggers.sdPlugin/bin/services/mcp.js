@@ -12,6 +12,9 @@ import { ResourceListChangedNotificationSchema, ToolListChangedNotificationSchem
 import { TOOL_EXECUTE, TOOL_LIST, isNotFound, parseExecutableActions, resultText } from '../core/mcp-actions.js'
 
 const REQUEST_TIMEOUT_MS = 10_000
+// Stream Deck says when an action is added to or removed from the MCP Deck, but not when one is
+// renamed, so the list is also checked this often. A check is a local call taking about a millisecond.
+const POLL_MS = 2_000
 const MIN_RESTART_DELAY_MS = 2_000
 const MAX_RESTART_DELAY_MS = 60_000
 
@@ -45,6 +48,8 @@ export class McpService extends EventEmitter {
   #restartTimer = null
   #pollTimer = null
   #stopping = false
+  /** Whether a failed listing has been logged since the last one that worked, to keep polling quiet. */
+  #listFailureLogged = false
   /** @type {Promise<void> | null} The start in progress, shared by overlapping callers. */
   #starting = null
   /** Bumped by every start and stop, so a start that was overtaken can tell. */
@@ -58,10 +63,10 @@ export class McpService extends EventEmitter {
    * @param {object} options
    * @param {{ debug: Function, info: Function, warn: Function, error: Function }} options.logger
    * @param {string} [options.bridgePath]
-   * @param {number} [options.pollMs] How often to re-list actions, as a fallback for missed change notifications.
+   * @param {number} [options.pollMs] How often to re-list actions, to catch changes Stream Deck doesn't announce.
    * @param {string} [options.clientVersion]
    */
-  constructor ({ logger, bridgePath = resolveBridgePath(), pollMs = 30_000, clientVersion = '0.0.0' }) {
+  constructor ({ logger, bridgePath = resolveBridgePath(), pollMs = POLL_MS, clientVersion = '0.0.0' }) {
     super()
     this.#logger = logger
     this.#bridgePath = bridgePath
@@ -171,13 +176,16 @@ export class McpService extends EventEmitter {
       const result = await client.callTool({ name: TOOL_LIST, arguments: {} }, undefined, { timeout: REQUEST_TIMEOUT_MS })
       const actions = parseExecutableActions(result)
       this.#restartDelay = MIN_RESTART_DELAY_MS
+      this.#listFailureLogged = false
       this.#setActions(actions)
       this.#setStatus('ready', actions.length === 0 ? 'The MCP Deck has no actions yet' : '')
       return actions
     } catch (error) {
       // A refresh still in flight when the connection closes isn't worth a warning.
       if (this.#client !== client) throw error
-      this.#logger.warn(`Couldn't list MCP Deck actions: ${error.message}`)
+      if (this.#listFailureLogged) this.#logger.debug(`Couldn't list MCP Deck actions: ${error.message}`)
+      else this.#logger.warn(`Couldn't list MCP Deck actions: ${error.message}`)
+      this.#listFailureLogged = true
       if (this.#status.state !== 'ready') {
         this.#setStatus('no-app', 'Couldn\'t list MCP Deck actions. Check that Enable MCP Actions is on in Stream Deck preferences.')
       }
