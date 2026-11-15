@@ -100,12 +100,13 @@ npm test           # unit tests (node:test, no Stream Deck, MCP or Twitch needed
 npm run dev        # turn on Stream Deck developer mode (once)
 npm run link       # link the .sdPlugin folder into Stream Deck (once)
 npm run restart    # restart the plugin after changing code
+npm run ui         # rebuild the property inspectors after changing ui/
 npm run validate   # check the manifest and files
 npm run images     # redraw the icons from bin/core/brand.js
 npm run marketplace  # redraw the Marketplace thumbnail and gallery images
 ```
 
-The plugin is plain JavaScript (ES modules) with no build step. The code in `com.organismzero.chattriggers.sdPlugin/bin/` is what Stream Deck runs:
+The plugin is plain JavaScript (ES modules). The only build step is for the property inspectors: their sources are in `ui/` at the top of the project, and `npm run ui` (also run by `npm install`, `link`, `validate` and `pack`) writes them into the plugin folder with sdpi-components and the stylesheet embedded, because Stream Deck can take many seconds to load a page's separate files. The code in `com.organismzero.chattriggers.sdPlugin/bin/` is what Stream Deck runs:
 
 | Path | Purpose |
 | --- | --- |
@@ -114,7 +115,7 @@ The plugin is plain JavaScript (ES modules) with no build step. The code in `com
 | `bin/actions/` | The Trigger and Status keys |
 | `bin/services/` | MCP client, Twitch sign-in and chat, global settings |
 | `bin/core/` | Pure logic: command matching, permissions, cooldowns, rate limiting, redaction, key images, and the brand colours and mark |
-| `ui/` | Property inspectors, using a vendored copy of [sdpi-components](https://sdpi-components.dev) v4.0.1 |
+| `ui/` | Property inspectors, built from the top-level `ui/` folder; they use a vendored copy of [sdpi-components](https://sdpi-components.dev) v4.0.1 |
 
 Logs are written to `com.organismzero.chattriggers.sdPlugin/logs/`. To check the MCP connection outside Stream Deck, with the Stream Deck app running:
 

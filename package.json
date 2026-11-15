@@ -10,15 +10,16 @@
     "node": ">=24"
   },
   "scripts": {
-    "postinstall": "node scripts/install-plugin-deps.js",
+    "postinstall": "node scripts/install-plugin-deps.js && node scripts/build-ui.js",
     "test": "node --test \"test/**/*.test.js\"",
     "dev": "streamdeck dev",
-    "link": "streamdeck link com.organismzero.chattriggers.sdPlugin",
+    "link": "node scripts/build-ui.js && streamdeck link com.organismzero.chattriggers.sdPlugin",
     "restart": "streamdeck restart com.organismzero.chattriggers",
-    "validate": "streamdeck validate com.organismzero.chattriggers.sdPlugin",
-    "pack": "node scripts/install-plugin-deps.js ci && streamdeck pack com.organismzero.chattriggers.sdPlugin --output dist --force",
+    "validate": "node scripts/build-ui.js && streamdeck validate com.organismzero.chattriggers.sdPlugin",
+    "pack": "node scripts/install-plugin-deps.js ci && node scripts/build-ui.js && streamdeck pack com.organismzero.chattriggers.sdPlugin --output dist --force",
     "images": "node scripts/render-images.js",
-    "marketplace": "node scripts/render-marketplace.js"
+    "marketplace": "node scripts/render-marketplace.js",
+    "ui": "node scripts/build-ui.js"
   },
   "devDependencies": {
     "@elgato/cli": "1.10.4",
